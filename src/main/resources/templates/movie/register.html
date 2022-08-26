@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<th:block th:replace="~{/layout/basic :: setContent(~{this::content} )}">
+  <th:block th:fragment="content">
+    <h1 class="mt-4">Movie Register Page</h1>
+    <form th:action="@{/movie/register}" th:method="post">
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label for="">Title</label>
+        <input type="text" name="title" placeholder="Title" class="form-control" >
+      </div>
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label for="">Image Files</label>
+        <input type="file" class="form-control" id="fileInput" multiple>
+        <label class="custom-file-label" data-browse="Browse"></label>
+      </div>
+      <div class="box">
+
+      </div>
+      <div class="form-group" style="margin-bottom: 10px;">
+        <button type="submit" class="btn btn-primary btnRegist">Submit</button>
+      </div>
+    </form>
+    <style>
+      .uploadResult {width:100%;background:gray;margin-top:10px;}
+      .uploadResult ul {
+          display:flex;flex-flow:row;justify-content:center;
+          align-items:center;vertical-align:top;overflow:auto;
+      }
+      .uploadResult ul li{list-style:none;padding:10px;margin-left:2em;}
+      .uploadResult ul li img{width:100px;}
+    </style>
+    <div class="uploadResult">
+      <ul></ul>
+    </div>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script th:inline="javascript">
+      window.onload = function(){
+        const regex = new RegExp("(.*?)\.(exe|sh|zip|alz|tiff)$");
+        const maxSize = 1024*1024*10; //10MB
+        function checkExtension(fileName, fileSize){
+          if(fileSize > maxSize){
+            alert('파일사이즈초과')
+            return false;
+          }
+          if(regex.test(fileName)){
+            alert('해당파일은 업로드 될 수 없습니다.')
+            return false;
+          }
+          return true;
+        }
+        const fileInput = document.querySelector("#fileInput")
+        fileInput.onchange = function(){
+          const fileName = fileInput.value.split("\\").pop() //맨끝만 나옴.
+          // let temp = siblings(document.querySelector(fileInput))
+          let temp = document.querySelector(".custom-file-label")
+          // temp.classList.add("selected")
+          temp.innerHTML = (fileInput.files.length-1)==0?"":
+                      fileName+" 외 "+(fileInput.files.length-1)+"개";
+
+          var formData = new FormData();
+          var files = this.files;
+          var appended = false;
+          
+          for(let i=0;i<files.length;i++){
+            if(!checkExtension(files[i].name, files[i].size)) {
+              temp.innerHTML = ""
+              this.value = ''
+              return false;
+            }
+            formData.append("uploadFiles", files[i]);
+            appended = true;
+          }
+
+          //전송할 파일이 없으면 여기서 끝.If there are no files to transfer, end here.
+          if(!appended) return;
+          
+          //전송할 파일이 있으면 목록 보기.It there are files to transfer,show list.
+          for(let value of formData.values()) console.log(value)
+          
+          const url = /*[[@{/uploadAjax/}]]*/'url'
+          axios.post(url, formData, {
+            headers: {
+              "Content-Type" : "multipart/form-data",
+              "process-data" : false,
+            }
+          }).then(function(res){
+            showResult(res.data);
+          }).catch(function(err){
+
+          })
+        }
+        function showResult(arr){
+          const uploadUL = document.querySelector(".uploadResult ul");
+          const url = /*[[@{/display}]]*/'url'
+          let str = ""
+          for(let i=0;i<arr.length;i++){
+            str += `
+            <li data-name='${arr[i].fileName}' data-path='${arr[i].folderPath}' 
+                data-uuid='${arr[i].uuid}' data-file='${arr[i].imageURL}'>
+              <div>
+                <button type='button' class='removeBtn'>X</button>
+                <br><img src='${url}?fileName=${arr[i].thumbnailURL}'>
+              </div>
+            </li>`
+          }
+          uploadUL.innerHTML = str;
+          const removeBtns = document.querySelectorAll(".removeBtn");
+          for (let i = 0; i < removeBtns.length; i++) {
+            removeBtns[i].onclick = function(){
+              const removeUrl = /*[[@{/removeFile}]]*/'url'
+              const targetLI = this.parentElement.closest('li')
+              const fileName = targetLI.dataset.file
+              axios({
+                method: "POST",
+                url: `http://localhost:8080${removeUrl}?fileName=${fileName}`,
+              }).then( function(res){
+                if(res.data === true) targetLI.remove();
+              }).catch(function(err){console.log(err)});
+            }
+          }
+        }
+        document.querySelector(".btnRegist").onclick = function(e){
+          e.preventDefault();
+          let str = "";
+          const liArr = document.querySelectorAll(".uploadResult ul li")
+          for(let i=0;i<liArr.length;i++){
+            const target = liArr[i];
+            str += `
+              <input type="hidden" name="imageDTOList[${i}].imgName" 
+              value="${target.dataset.name}">
+              <input type="hidden" name="imageDTOList[${i}].path" 
+              value="${target.dataset.path}">
+              <input type="hidden" name="imageDTOList[${i}].uuid" 
+              value="${target.dataset.uuid}">
+              
+            `
+          }
+          document.querySelector(".box").innerHTML = str
+          document.querySelector("form").submit()
+        }
+      }
+    </script>    
+  </th:block>
+</th:block>

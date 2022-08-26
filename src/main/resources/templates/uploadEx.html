@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <input type="file" name="uploadFiles" id="uploadFiles" multiple>
+  <button class="btnUpload">Upload</button>
+  <div class="uploadResult">
+
+  </div>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script th:inline="javascript">
+    function showUploadedImages(arr){
+      const divArea = document.querySelector(".uploadResult");
+      const url = /*[[@{/display}]]*/'url'
+      let str='';
+      for(let i=0;i<arr.length;i++){
+        str += `<div>
+                  <img src="${url}?fileName=${arr[i].thumbnailURL}">
+                  <button class='removeBtn' 
+                    data-name='${arr[i].imageURL}'>REMOVE</button>
+                </div>
+              `
+      }
+      divArea.innerHTML = str;
+      const removeBtns = document.querySelectorAll(".removeBtn");
+      for (let i = 0; i < removeBtns.length; i++) {
+        removeBtns[i].onclick = function(){
+          const fileName = this.dataset.name
+          const targetDiv = this.closest('div')
+          const removeUrl = /*[[@{/removeFile}]]*/'url'
+          axios({
+            method: "POST",
+            url: `http://localhost:8080${removeUrl}?fileName=${fileName}`,
+          }).then( function(res){
+            if(res.data === true) targetDiv.remove();
+          }).catch(function(err){console.log(err)});
+        }
+      }
+    }
+    btnUpload = document.querySelector(".btnUpload");
+    btnUpload.onclick = function(){
+      var formData = new FormData();
+      const inputFile = document.querySelector("#uploadFiles");
+      var fileSelected = inputFile.files;
+      
+      for(let i=0;i<fileSelected.length;i++){
+        console.log(fileSelected[i]);
+        formData.append("uploadFiles", fileSelected[i]);
+      }
+
+      const url = /*[[@{/uploadAjax/}]]*/'url'
+      axios.post(url, formData, {
+        headers: {
+          "Content-Type" : "multipart/form-data",
+          "process-data" : false,
+          "content-type" : false,
+        }
+      }).then(function(res){
+        console.log(res.data)
+        showUploadedImages(res.data);
+      }).catch(function(err){
+
+      })
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<th:block th:replace="~{/layout/basic :: setContent(~{this::content} )}">
+  <th:block th:fragment="content">
+    <h1 class="mt-4">Movie Modify Page</h1>
+    <form th:action="@{/movie/modify}" method="post">
+      <div class="form-group" style="margin-bottom: 30px;">
+        <label for="">#</label>
+        <input type="text" name="mno" class="form-control" readonly th:value="${dto.mno}">
+        <input type="hidden" name="page" th:value="${requestDTO.page}">
+        <input type="hidden" name="type" th:value="${requestDTO.type}">
+        <input type="hidden" name="keyword" th:value="${requestDTO.keyword}">
+      </div>
+      <div style="margin-bottom: 30px;">
+        <label for="">Title</label>
+        <input type="text" name="title" class="form-control" th:value="${dto.title}">
+      </div>
+      <div style="margin-bottom: 30px;">
+        <label for="">Review Count</label>
+        <input type="text" name="reviewCnt" class="form-control" readonly th:value="${dto.reviewCnt}">
+      </div>
+      <div style="margin-bottom: 30px;">
+        <label for="">Average</label>
+        <input type="text" name="avg" readonly class="form-control" th:value="${dto.avg}">
+      </div>
+      <div class="form-group" style="margin-bottom: 30px;">
+        <label for="">RegDate</label>
+        <input type="text" readonly class="form-control"
+          th:value="${#temporals.format(dto.regDate,'yyyy/MM/dd HH:mm:ss')}">
+      </div>
+      <div class="form-group" style="margin-bottom: 30px;">
+        <label for="">ModDate</label>
+        <input type="text" readonly class="form-control"
+          th:value="${#temporals.format(dto.modDate,'yyyy/MM/dd HH:mm:ss')}">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label for="">Image Files</label>
+        <input type="file" class="form-control" id="fileInput" multiple>
+        <label class="custom-file-label" data-browse="Browse"></label>
+      </div>
+      <div class="box">
+
+      </div>
+
+    </form>
+    <style>
+      .uploadResult {
+        width: 100%;
+        background: gray;
+        margin-top: 10px;
+      }
+
+      .uploadResult ul {
+        display: flex;
+        flex-flow: row;
+        justify-content: center;
+        align-items: center;
+        vertical-align: top;
+        overflow: auto;
+      }
+
+      .uploadResult ul li {
+        list-style: none;
+        padding: 10px;
+        margin-left: 2em;
+      }
+
+      .uploadResult ul li img {
+        width: 100px;
+      }
+    </style>
+    <div class="uploadResult">
+      <ul>
+        <li th:each="movieImage: ${dto.imageDTOList}" style="cursor:pointer"
+          th:data-file="${movieImage.imageURL}" th:data-uuid="${movieImage.uuid}">
+          <div>
+            <button type='button' class='removeBtn' th:if="${movieImage.path != null}">X</button>
+            <br>
+            <img th:if="${movieImage.path != null}" th:src="|@{/display}?fileName=${movieImage.getThumbnailURL}|">
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div class="form-group" style="margin-bottom: 30px;">
+      <button type="button" id="btnModify" class="btn btn-primary">Modify</button>
+      <button type="button" id="btnList" class="btn btn-info">List</button>
+      <button type="button" id="btnRemove" class="btn btn-danger">Remove</button>
+    </div>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script th:inline="javascript">
+      const actionForm = document.querySelector("form");
+      const btnModify = document.querySelector('#btnModify');
+      btnModify.onclick = function () {
+        actionForm.setAttribute("action", /*@{/movie/modify}*/ 'modify');
+        actionForm.setAttribute("method", "post");
+        actionForm.submit();
+      }
+      const btnList = document.querySelector('#btnList');
+      btnList.onclick = function () {
+        location.href = /*[[@{/movie/list(page=${requestDTO.page}
+          ,type=${requestDTO.type},keyword=${requestDTO.keyword})}]]*/ 'url'
+      }
+      const btnRemove = document.querySelector('#btnRemove');
+      btnRemove.onclick = function () {
+        actionForm.setAttribute("action", /*@{/movie/remove}*/'remove');
+        actionForm.setAttribute("method", "post");
+        actionForm.submit();
+      }
+      window.onload = () => {
+        const removeBtns = document.querySelectorAll(".removeBtn");
+        for (let i = 0; i < removeBtns.length; i++) {
+          removeBtns[i].onclick = function () {
+            const removeUrl = /*[[@{/removeFile}]]*/'url'
+            const targetLI = this.parentElement.closest('li')
+            const fileName = targetLI.dataset.file
+            const uuid = targetLI.dataset.uuid
+            axios({
+              method: "POST",
+              url: `http://localhost:8080${removeUrl}?fileName=${fileName}&uuid=${uuid}`,
+            }).then(function (res) {
+              alert(res.data?'Deleted!':'Error!');
+              if (res.data == true) targetLI.remove();
+            }).catch(function (err) { console.log(err) });
+          }
+        }
+      }
+    </script>
+  </th:block>
+</th:block>

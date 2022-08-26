@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<th:block th:replace="~{/layout/basic :: setContent(~{this::content} )}">
+  <th:block th:fragment="content">
+    <h1 class="mt-4">Movie Read Page</h1>
+    <div style="margin-bottom: 30px;">
+      <label for="">#</label>
+      <input type="text" name="mno" class="form-control" readonly
+        th:value="${dto.mno}">
+    </div>
+    <div style="margin-bottom: 30px;">
+      <label for="">Title</label>
+      <input type="text" name="title" class="form-control" readonly
+      th:value="${dto.title}">
+    </div>
+    <div style="margin-bottom: 30px;">
+      <label for="">Review Count</label>
+      <input type="text" name="reviewCnt" class="form-control" readonly
+      th:value="${dto.reviewCnt}">
+    </div>
+    <div style="margin-bottom: 30px;">
+      <label for="">Average</label>
+      <input type="text" name="avg" readonly class="form-control"
+      th:value="${dto.avg}">
+    </div>
+    <div style="margin-bottom: 30px;">
+      <label for="">RegDate</label>
+      <input type="text" readonly class="form-control" 
+      th:value="${#temporals.format(dto.regDate,'yyyy/MM/dd HH:mm:ss')}">
+    </div>
+    <div style="margin-bottom: 30px;">
+      <label for="">ModDate</label>
+      <input type="text" readonly class="form-control" 
+      th:value="${#temporals.format(dto.modDate,'yyyy/MM/dd HH:mm:ss')}">
+    </div>
+    <style>
+      .uploadResult {width:100%;background:gray;margin-top:10px;}
+      .uploadResult ul {
+          display:flex;flex-flow:row;justify-content:center;
+          align-items:center;vertical-align:top;overflow:auto;
+      }
+      .uploadResult ul li{list-style:none;padding:10px;margin-left:2em;}
+      .uploadResult ul li img{width:100px;}
+    </style>
+    <div class="uploadResult">
+      <ul>
+        <li th:each="movieImage: ${dto.imageDTOList}" style="cursor:pointer"
+                  th:data-file="${movieImage.getThumbnailURL}">
+          <img th:if="${movieImage.path != null}" 
+          th:src="|@{/display}?fileName=${movieImage.getThumbnailURL}|">
+        </li>
+      </ul>
+    </div>
+    <div style="margin-bottom: 30px;">
+      <button class="btn btn-primary" th:onclick="|location.href=
+          '@{/movie/modify(mno=${dto.mno},page=${requestDTO.page}
+          ,type=${requestDTO.type},keyword=${requestDTO.keyword})}'|"
+          >Modify</button>
+      <button class="btn btn-info" th:onclick="|location.href=
+          '@{/movie/list(page=${requestDTO.page},type=${requestDTO.type},
+          keyword=${requestDTO.keyword})}'|">List</button>
+    </div>
+    <div style="margin-bottom: 30px;">
+      <div class="mt-4">
+        <h5><span class="btn btn-secondary registReview">Review Register</span> 
+        <span class="btn btn-warning reviewCount">
+          Review Count [[${dto.reviewCnt}]]
+        </span></h5>
+      </div>
+      <div class="list-group reviewList">
+
+      </div>
+    </div>
+    <style>
+      .star {position: relative;font-size: 2rem;color: #ddd;}
+      .star input {width: 100%;height: 100%;position: absolute;left: 0;
+        opacity: 0;cursor: pointer;}
+      .star span {width: 0;position: absolute; left: 0;color: red;
+        overflow: hidden;pointer-events: none;}
+    </style>
+    <div id="myModal" class="modal" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Modal title</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"
+                   aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Modal body text goes here.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger remove" >Remove</button>
+            <button type="button" class="btn btn-warning modify">Modify</button>
+            <button type="button" class="btn btn-primary save">Save</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="imageModal modal " tabindex="-2" role="dialog">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Picture</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"
+            aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script th:inline="javascript">
+      function drawStar(target) {
+        document.querySelector(`.star span`).style.width = `${target.value * 10}%`;
+      }
+      window.onload = function(){
+        var myModal = new bootstrap.Modal(document.getElementById('myModal')
+        , {backdrop: false})
+
+        var msg = /*[[${msg}]]*/'msg';
+        if(msg){
+          console.log(msg)
+          const mno = msg.split(" ")[0]
+          const noti = msg.split(" ")[1]
+          document.querySelector(".modal-title").textContent=noti+' 완료'
+          document.querySelector(".modal-body").innerHTML = 
+              `<p>${mno}번 글이 ${noti}되었습니다.</p>`
+          showBtn('Close')
+          myModal.show();
+        }
+        const uploadResultLis = document.querySelectorAll(".uploadResult li");
+        for(const li of uploadResultLis){
+          li.onclick = function(){
+            const url = /*[[@{/display}]]*/'url'
+            const file = this.dataset.file;
+            document.querySelector(".modal-title").textContent='Movie Poster'
+            document.querySelector(".modal-body").innerHTML = 
+            `<img style='width:100%' src="${url}?fileName=${file}&size=1">`
+            showBtn('Close');
+            myModal.show();
+          }
+        }
+        const mno = /*[[${dto.mno}]]*/'mno'
+        console.log("mno::: " + mno)
+        var listGroup = document.querySelector(".reviewList");
+        function formatTime(str){
+          var date = new Date(str);
+          return date.getFullYear()+'/'+
+                  (date.getMonth()+1)+'/'+
+                  date.getDate()+ ' ' +
+                  date.getHours() + ':' +
+                  date.getMinutes();
+        }
+        function getMovieReviews(){
+          const url = /*[[@{/reviews/}]]*/'url'
+          axios({
+                method:"GET",
+                url: 'http://localhost:8080'+url+mno+"/all"
+          }).then( function(res){
+            let str = '';
+            for (const review of res.data) {
+              str += 
+              `<div class="card-body form-control" data-reviewnum="${review.reviewnum}"
+                  data-text="${review.text}" data-mid="${review.mid}"
+                  data-grade="${review.grade}" data-nickname="${review.nickname}"
+                  data-email="${review.email}">
+                <h5 class="card-title">${review.text} ${review.grade}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">${review.nickname}</h6>
+                <p class="card-text">${formatTime(review.regDate)}</p>
+              </div>`
+            }
+            listGroup.innerHTML = str
+            const cardbodys = document.querySelectorAll('.card-body')
+            for(let i=0;i<cardbodys.length;i++){
+              cardbodys[i].onclick = function(){
+                const reviewnum = cardbodys[i].dataset.reviewnum
+                const text = cardbodys[i].dataset.text
+                const mid = cardbodys[i].dataset.mid
+                const grade = cardbodys[i].dataset.grade
+                document.querySelector(".modal-title").textContent='Modify Review'
+                document.querySelector(".modal-body").innerHTML = 
+                  ` <div class="modal-body" style="margin-bottom: 5px;">
+                      <input class="form-control" type="text" name="mid" value="${mid}" readonly>
+                      <input type="hidden" name="reviewnum" value="${reviewnum}">
+                    </div>
+                    <div class="modal-body" style="margin-bottom: 5px;">
+                      <label>Grade</label> <span class="star">★★★★★<span>★★★★★</span>
+                        <input type="range" oninput="drawStar(this)" value="1" 
+                        step="2" min="0" max="10">
+                      </span>
+                    </div>
+                    <div class="modal-body" style="margin-bottom: 5px;">
+                      <input class="form-control" type="text" name="text" value="${text}">
+                    </div>
+                  `
+                showBtn('Remove','Modify','Close');
+                document.querySelector(`.star span`).style.width = `${grade * 20}%`;
+                myModal.show();
+              }
+            }
+          }).catch(function(err){console.log(err)});
+        }
+        getMovieReviews()
+        
+        document.querySelector(".registReview").onclick = function(){
+          document.querySelector(".modal-title").textContent='Movie Review Regist'
+          document.querySelector(".modal-body").innerHTML = 
+              ` <div class="modal-body" style="margin-bottom: 5px;">
+                  <input class="form-control" type="text" name="mid" placeholder="Reviewer ID">
+                </div>
+                <div class="modal-body" style="margin-bottom: 5px;">
+                  <label>Grade</label> <span class="star">★★★★★<span>★★★★★</span>
+                    <input type="range" oninput="drawStar(this)" value="1" 
+                    step="2" min="0" max="10">
+                  </span>
+                </div>
+                <div class="modal-body" style="margin-bottom: 5px;">
+                  <input class="form-control" type="text" name="text" placeholder="Review Text">
+                </div>
+              `
+          showBtn('Save','Close');
+          myModal.show();
+        }
+        function showBtn(...arr){
+          const btns = document.querySelectorAll(".modal-footer .btn");
+          for(let i=0;i<btns.length;i++){
+            for(let j=0;j<arr.length;j++){
+              if(arr[j] !== btns[i].textContent) {
+                btns[i].style.display = 'none';
+              } else {
+                btns[i].style.display = 'inline';
+                break;
+              }
+            }
+          }
+        }
+        document.querySelector(".modal-footer .save").onclick = function(){
+          const grade = parseFloat(document.querySelector(".star span").style.width)*0.01*5
+          const review = {
+            mno: mno, 
+            grade: grade,
+            text: document.querySelector("input[name='text']").value,
+            mid: document.querySelector("input[name='mid']").value
+          }
+          console.log(review)
+          const url = /*[[@{/reviews/}]]*/'url'
+          axios({
+                method:"POST",
+                url: 'http://localhost:8080'+url+mno,
+                data: JSON.stringify(review),
+                headers: {'Content-Type': 'application/json'}
+          })
+          .then( function(res){
+            var newReviewnum = parseInt(res.data)
+            alert(newReviewnum+'번 리뷰가 등록되었습니다.')
+            myModal.hide();
+            getMovieReviews();
+          }).catch(function(err){console.log(err)});
+        }
+        document.querySelector(".modal-footer .modify").onclick = function(){
+          var reviewnum = document.querySelector("input[name='reviewnum']").value;
+          const grade = parseFloat(document.querySelector(".star span").style.width)*0.01*5
+          const review = {
+            reviewnum: reviewnum, mno: mno, grade: grade,
+            text: document.querySelector("input[name='text']").value,
+            mid: document.querySelector("input[name='mid']").value
+          }
+          console.log(review)
+          const url = /*[[@{/reviews/}]]*/'url'
+          axios({
+                method:"PUT",
+                url: 'http://localhost:8080'+url+mno+"/"+reviewnum,
+                data: JSON.stringify(review),
+                headers: {'Content-Type': 'application/json'}
+          })
+          .then( function(res){
+            if(res.data == reviewnum){
+              alert('댓글이 수정되었습니다.')
+              myModal.hide();
+              getMovieReviews();
+            }
+          }).catch(function(err){console.log(err)});
+        }
+        document.querySelector(".modal-footer .remove").onclick = function(){
+          var reviewnum = document.querySelector("input[name='reviewnum']").value;
+          const url = /*[[@{/reviews/}]]*/'url'
+          axios({
+                method:"DELETE",
+                url: 'http://localhost:8080'+url+mno+"/"+reviewnum,
+          })
+          .then( function(res){
+            if(res.data == reviewnum){
+              alert(reviewnum+'번 리뷰가 삭제되었습니다.')
+              myModal.hide();
+              getMovieReviews();
+            }
+          }).catch(function(err){console.log(err)});
+        }
+      }
+    </script>
+  </th:block>
+</th:block>
